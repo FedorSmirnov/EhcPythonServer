@@ -75,15 +75,15 @@ def get_dict(tec_name='CUL_HM:'):
     for room_name in res.keys():
         
         room_dict = {"name":room_name,"devices":[],"sensors":[]}
-        
-        for device_name in res[room_name]['devices']:
-            dev_dict = {'name':device_name, 'state':res[room_name]['devices'][device_name]}
-            room_dict['devices'].append(dev_dict)
-            
-        for sensor_name in res[room_name]['sensors']:
-            sensor_dict = {'name':sensor_name, 'state':res[room_name]['sensors'][sensor_name]}
-            room_dict['sensors'].append(sensor_dict)
-            
+        if 'devices' in res[room_name]:
+            for device_name in res[room_name]['devices']:
+                dev_dict = {'name':device_name, 'state':res[room_name]['devices'][device_name]}
+                room_dict['devices'].append(dev_dict)
+        if 'sensors' in res[room_name]:        
+            for sensor_name in res[room_name]['sensors']:
+                sensor_dict = {'name':sensor_name, 'state':res[room_name]['sensors'][sensor_name]}
+                room_dict['sensors'].append(sensor_dict)
+                
         res_list["rooms"].append(room_dict)
                 
     return res_list
