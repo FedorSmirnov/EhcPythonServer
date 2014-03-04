@@ -107,7 +107,7 @@ class index:
         # adjust the state of both the real and the virtual apartment
         apartment.adjust_state(post_dict)
         # the reponse contains the current apartment state
-        web.header('Content-Type', 'application/json')
+        web.header('Content-Type','application/json')
         response = {'response' : 'success'}
         json_resp = json.dumps(response)
         return json_resp
