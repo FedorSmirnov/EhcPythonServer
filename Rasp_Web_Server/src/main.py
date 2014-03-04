@@ -9,6 +9,7 @@ import web
 import json
 import telnetlib
 import threading
+import copy
 
 # local imports
 from local import rasp_to_fhem_comm
@@ -17,7 +18,7 @@ from fhem import constants
 
 
 # mapping of the URLs to the controller classes
-urls = ('/', 'index')
+urls = ('/', 'index', '/handshake', 'handshake')
 
 # credentials (perhaps good idea to add encryption later)
 password_tr = 'geheim'
@@ -62,6 +63,12 @@ checkExtIp.checkIP()
 # start the thread listening for the fhem events
 listen_to_events()
 
+class handshake:
+    
+    def GET(self):
+        # gets called when the mobile client checks whether it can reach the PyServer via the local network
+        return 'true'
+
 class index:
     
     def GET(self):
@@ -76,7 +83,10 @@ class index:
         
         # Get the apartment object, turn it into json and make the response
         web.header('Content-Type', 'application/json')
-        json_apartment = json.dumps(apartment.get_dict())
+        apartment_copy = copy.deepcopy(apartment.get_dict())
+        apartment_copy['Password'] = password_tr
+        apartment_copy['User'] = user_tr
+        json_apartment = json.dumps(apartment_copy)
         return json_apartment
     
     def POST(self):
