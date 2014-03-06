@@ -9,6 +9,7 @@ import threading
 import re
 import urllib
 import urllib2
+import fhem.constants
 
 current_ext_ip =''
 current_local_ip = ''
@@ -32,6 +33,8 @@ def checkIP():
         current_ext_ip = resp_string_ext
         current_local_ip = resp_string_local
         update_ext_ip(current_ext_ip, current_local_ip)
+    fhem.constants.HOST = current_local_ip
+    fhem.constants.URL_BASE = 'http://%s:8083/fhem?' % current_local_ip
     t = threading.Timer(ip_check_interval, checkIP)
     t.setDaemon(True)
     t.start()
