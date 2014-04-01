@@ -52,7 +52,33 @@ def get_dict(tec_name='CUL_HM:'):
         res[room]['sensors']['temperature'] = temperature
         res[room]['sensors']['humidity'] = humidity
         
-    res_list = {"rooms":[]}
+    # Searching for the door/window sensors
+    
+    door_sensor_group = re.findall(r'(\w+)\.(\w+)\s+\((open|closed)\)', resp_str)
+    
+    for door_sensor in door_sensor_group:
+        room, door_name, door_state = door_sensor
+        
+        if room not in res:
+            res[room]={}
+        if 'sensors' not in res[room]:
+            res[room]['sensors'] ={}
+        res[room]['sensors'][door_name] = door_state   
+        
+    # Searching for the water sensors
+    
+    water_sensor_group = re.findall(r'(\w+)\.(\w+)\s+\((dry|wet)\)', resp_str)
+    
+    for water_sensor in water_sensor_group:
+        
+        room, water_name, water_state = water_sensor
+        if room not in res:
+            res[room]={}
+        if 'sensors' not in res[room]:
+            res[room]['sensors'] ={}
+            
+        res[room]['sensors'][water_name] = water_state
+        
     
     #searching for all the motion sensors
     
@@ -69,7 +95,7 @@ def get_dict(tec_name='CUL_HM:'):
         
         res[room]['sensors']['motion'] = 'NONE'
         
-        
+    res_list = {"rooms":[]}    
     
     #turning dict into a list
     for room_name in res.keys():

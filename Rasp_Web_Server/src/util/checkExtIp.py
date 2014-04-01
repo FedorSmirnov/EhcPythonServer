@@ -23,6 +23,7 @@ def update_ext_ip(cur_ex_ip, cur_loc_ip):
 
 def checkIP():
     # check the external ip and update if necessary
+    print 'Checking the ip'
     global current_ext_ip
     resp_string_ext = subprocess.check_output(['curl', '-s', 'icanhazip.com']).rstrip()
     
@@ -33,6 +34,8 @@ def checkIP():
         current_ext_ip = resp_string_ext
         current_local_ip = resp_string_local
         update_ext_ip(current_ext_ip, current_local_ip)
+    else:
+        print 'ips still the same; no changes neccessary'
     fhem.constants.HOST = current_local_ip
     fhem.constants.URL_BASE = 'http://%s:8083/fhem?' % current_local_ip
     t = threading.Timer(ip_check_interval, checkIP)

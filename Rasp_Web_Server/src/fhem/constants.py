@@ -13,9 +13,13 @@ regex_list = []
 regex_motion = r'(\d+-\d+-\d+\s\d+:\d+:\d+)\sCUL_HM\s(\w+)\.(\w+)\smotion'
 regex_temp_and_humid = r'(\d+-\d+-\d+\s\d+:\d+:\d+)\sCUL_HM\s(\w+)\.(\w+)\sT:\s(\d+\.\d+)\sH:\s(\d+)'
 regex_switch = r'(\d+-\d+-\d+\s\d+:\d+:\d+)\sCUL_HM\s(\w+)\.(\w+)\s(on|off)'
+regex_door = r'(\d+-\d+-\d+\s\d+:\d+:\d+)\sCUL_HM\s(\w+)\.(\w+)\s(open|closed)'
+regex_water = r'(\d+-\d+-\d+\s\d+:\d+:\d+)\sCUL_HM\s(\w+)\.(\w+)\s(wet|dry)'
 regex_list.append(regex_motion)
 regex_list.append(regex_temp_and_humid)
 regex_list.append(regex_switch)
+regex_list.append(regex_door)
+regex_list.append(regex_water)
 
 REG_LIST = regex_list
 

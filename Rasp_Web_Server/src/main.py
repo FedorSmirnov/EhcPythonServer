@@ -24,6 +24,9 @@ urls = ('/', 'index', '/handshake', 'handshake')
 password_tr = 'geheim'
 user_tr = 'guest@jochen-bauer.net'
 
+# get your own external IP and report it to the web server (periodically repeated in an extra thread)
+checkExtIp.checkIP()
+
 # init of the object representing the state of all controlled devices
 apartment = rasp_to_fhem_comm.init()
 
@@ -50,6 +53,15 @@ def listen_to_events():
         # Event caused by a switch
         state = match_object.group(4)
         apartment.set_dev_state(room, dev_name, state)
+    if index == 3:
+        # Event caused by a door sensor
+        state = match_object.group(4)
+        apartment.set_sens_state(room, dev_name, state)
+    if index == 4:
+        # Event caused by a water sensor
+        state = match_object.group(4)
+        apartment.set_sens_state(room, dev_name, state)
+        
     apartment.get_lock().release()
     tn.close()
     # When finished with the reading, the function calls itself in a new thread to keep listening
@@ -57,8 +69,7 @@ def listen_to_events():
     thread_timer.setDaemon(True)
     thread_timer.start()    
 
-# get your own external IP and report it to the web server (periodically repeated in an extra thread)
-checkExtIp.checkIP()
+
 
 # start the thread listening for the fhem events
 listen_to_events()
