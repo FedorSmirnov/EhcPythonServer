@@ -7,6 +7,7 @@ import local
 import threading
 import itertools
 
+
 # defines all the things that are controlled by THIS raspberry
 class Apartment:
     room_dict = None
