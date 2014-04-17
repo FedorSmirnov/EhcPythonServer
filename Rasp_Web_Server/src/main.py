@@ -11,6 +11,7 @@ import telnetlib
 import threading
 import copy
 import time
+import urllib2
 
 # local imports
 from local import rasp_to_fhem_comm
@@ -19,25 +20,56 @@ from fhem import constants
 from fhem import control
 
 
-# mapping of the URLs to the controller classes
+######## mapping of the URLs to the controller classes
 urls = ('/', 'index', '/handshake', 'handshake')
 
-# credentials (perhaps good idea to add encryption later)
+######## credentials (perhaps good idea to add encryption later)
 password_tr = 'geheim'
 user_tr = 'guest@jochen-bauer.net'
 
-# variables used for the apartment behavior
-lamp_movement_reaction = False
+######## variables used for the apartment behavior
 
-time_of_last_movement = None
-no_movement_interval = 30
+# # lamp-movement bahavior
+lamp_movement_reaction = False  # movement sensitive or not
 
-# variables for the used alarms
+time_of_last_movement = None  # last moment when movement was registered
+no_movement_interval = 60  # how long is the lamp on after the last registered movement
+
+# # water sensor-flower behavior
+time_of_last_wet_state = None
+no_water_interval = 60
+
+# # variables for the mold message
+mold_temp = 10
+mold_humidity = 70
+
+######## variables for the used urgent alarms
+
+alarms_urgend_all = False
+alarmsUrgentList = []
+
+alarm_ur_water = False
+alarm_ur_water_message = 'Wasser laueft aus. Bitte dringend die Washmaschine ueberpruefen!!!'
+
+######## variables for the used normal alarms
 alarms_all = False
 alarmList = []
 
 alarm_water = False
 alarm_water_message = 'Das Wasser ist ausgelaufen.'
+
+alarm_flowers = False
+alarm_flowers_message = 'Die Blumen wurden seit %d Minuten nicht gegossen.'
+
+alarm_wind = False
+alarm_wind_message = 'Sowohl die Eingangstuer als auch das Fenster sind geoeffnet.'
+
+alarm_mold = False
+alarm_mold_message = 'Die Luftfeuchtigkeit im Badezimmer ist zu hoch. Sie sollten lueften oder die Heizung einschalten, um Schimmelbefall zu vermeiden.'
+
+# last time gong was checked
+gong_check = None
+gong_check_interval = 15
 
 
 # get your own external IP and report it to the web server (periodically repeated in an extra thread)
@@ -55,16 +87,47 @@ def check_water_alarm():
     else:
         alarm_water = False
 
+def check_flowers_alarm():
+    global alarm_flowers
+    if time_of_last_wet_state:
+        if time.time() - time_of_last_wet_state > int(float(no_water_interval)):
+            alarm_flowers = True
+        else:
+            alarm_flowers = False
+    else:
+        alarm_flowers = False
+
 def update_alarm():
     global alarms_all
     global alarmList
     alarmList = []
     check_water_alarm()
+    check_flowers_alarm()
     
-    if alarm_water:
-        alarmList.append(alarm_water_message)
+    # if alarm_water:
+    #    alarmList.append(alarm_water_message)
     
-    alarms_all = alarm_water
+    if alarm_flowers:
+        alarmList.append(alarm_flowers_message % ((time.time() - time_of_last_wet_state) / 60))
+        
+    if alarm_wind:
+        alarmList.append(alarm_wind_message)
+        
+    if alarm_mold:
+        alarmList.append(alarm_mold_message)
+    
+    # this line determines which alarms are active
+    alarms_all = (alarm_flowers or alarm_wind or alarm_mold)
+    
+    
+    
+    global alarms_urgend_all
+    global alarmsUrgentList
+    alarmsUrgentList = []
+    if alarm_ur_water:
+        alarmsUrgentList.append(alarm_ur_water_message)
+        
+    alarms_urgend_all = alarm_ur_water
 
 # function describing time dependent behavior
 def check_times():
@@ -84,12 +147,44 @@ def check_times():
     
     # alarm reaction
     update_alarm()
-    if alarms_all and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'off':
-        apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
-        control.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
-    if not alarms_all and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'on':
-        apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
-        control.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
+    
+    global gong_check
+    
+    if not gong_check or time.time() - gong_check >= gong_check_interval:
+        print 'gong'
+        if (alarms_all or alarms_urgend_all) and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'off':
+            apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
+            control.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
+        
+    
+        #if not (alarms_all or alarms_urgend_all) and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'on':
+        #    apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
+        #    control.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
+         
+        if alarms_urgend_all and apartment.get_dev_status("Fedors_Zimmer", "Sound") == "off":
+            apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'on')
+            control.set_dev_state('Fedors_Zimmer', 'Sound', 'on')
+        #if not alarms_urgend_all and apartment.get_dev_status("Fedors_Zimmer", "Sound") == "on":
+        #    apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'off')
+        #    control.set_dev_state('Fedors_Zimmer', 'Sound', 'off')
+        gong_check = time.time()
+    
+    # because gong has a wierd bahavior: status request
+    
+    #cmd_ref_sound = 'Fedors_Zimmer.Sound'
+    #cmd_ref_blink = 'Fedors_Zimmer.Blinken'
+    
+    #if apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'on':
+        #urllib2.urlopen(constants.get_statusRequest_url(cmd_ref_blink))
+        #if control.get_dict()['Fedors_Zimmer']['sensors']['Blinken'] == 'off':
+        #    apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'off') 
+    
+    #if apartment.get_dev_status('Fedors_Zimmer', 'Sound') == 'on':
+    #    urllib2.urlopen(constants.get_statusRequest_url(cmd_ref_sound))
+        #if control.get_dict()['Fedors_Zimmer']['sensors']['Sound'] == 'off':
+        #    apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'off') 
+    
+    
         
     thread_timer = threading.Timer(0, check_times)
     thread_timer.setDaemon(True)
@@ -119,6 +214,16 @@ def listen_to_events():
         # Event caused by a temperature/humidity sensor  
         temp = match_object.group(4)
         humid = match_object.group(5)
+        
+        temp_int = float(temp)
+        humid_int = float(humid)
+        global alarm_mold
+        
+        if temp_int >= mold_temp and humid_int >= mold_humidity:
+            alarm_mold = True
+        else:
+            alarm_mold = False
+        
         apartment.set_sens_state(room, 'temperature', temp)
         apartment.set_sens_state(room, 'humidity', humid)
     if index == 2:
@@ -133,10 +238,35 @@ def listen_to_events():
         # Event caused by a door sensor
         state = match_object.group(4)
         apartment.set_sens_state(room, dev_name, state)
+        
+        # TO DO: Add the second sensor to the alarm condition
+        state_door = apartment.get_sens_status('Fedors_Zimmer', 'Tuer')
+        state_window = apartment.get_sens_status('Fedors_Zimmer', 'Fenster')
+        global alarm_wind
+        if state_door == 'open' and state_window == 'open':
+            alarm_wind = True
+        else:
+            alarm_wind = False
+        
     if index == 4:
         # Event caused by a water sensor
         state = match_object.group(4)
         apartment.set_sens_state(room, dev_name, state)
+        # Flower behavior
+        global time_of_last_wet_state
+        if state == 'dry' and dev_name == 'Wasserstand':
+            # switch from wet to dry is seen as the last water moment
+            time_of_last_wet_state = time.time()
+        elif dev_name == 'Wasserstand':
+            time_of_last_wet_state = None
+        
+        global alarm_ur_water
+        
+        if state == 'wet' and dev_name == 'Wasseralarm':
+            alarm_ur_water = True
+        elif dev_name == 'Wasseralarm':
+            alarm_ur_water = False
+        
         
     apartment.get_lock().release()
     tn.close()
@@ -183,9 +313,14 @@ class index:
         apartment_copy['lamp_movement'] = lamp_movement_reaction
         apartment_copy['no_movement_time'] = no_movement_interval
         
+        apartment_copy['no_water_time'] = no_water_interval
+        
         # Add the alarm information to the message object
         apartment_copy['alarm'] = alarms_all
         apartment_copy['alarmList'] = alarmList
+        
+        apartment_copy['alarm_urgent'] = alarms_urgend_all
+        apartment_copy['alarmUrgentList'] = alarmsUrgentList
         
         json_apartment = json.dumps(apartment_copy)
         return json_apartment
@@ -211,6 +346,9 @@ class index:
             global lamp_movement_reaction
             no_movement_interval = int(post_dict['no_movement_time'])
             lamp_movement_reaction = post_dict['lamp_movement']
+            
+        global no_water_interval
+        no_water_interval = post_dict['no_water_time']
             
         # adjust the state of both the real and the virtual apartment
         apartment.adjust_state(post_dict)

@@ -41,5 +41,8 @@ def get_on_url(dev_name):
 def get_off_url(dev_name):
     return get_cmd_url(dev_name,  'off')
 
+def get_statusRequest_url(dev_name):
+    return get_cmd_url(dev_name,  'statusRequest')
+
 
 
