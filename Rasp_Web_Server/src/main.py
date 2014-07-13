@@ -29,7 +29,7 @@ user_tr = 'guest@jochen-bauer.net'
 
 ######## variables used for the apartment behavior
 
-# # lamp-movement bahavior
+# # lamp-movement behavior
 lamp_movement_reaction = False  # movement sensitive or not
 
 time_of_last_movement = None  # last moment when movement was registered
@@ -71,12 +71,6 @@ alarm_mold_message = 'Die Luftfeuchtigkeit im Badezimmer ist zu hoch. Sie sollte
 gong_check = None
 gong_check_interval = 15
 
-
-# get your own external IP and report it to the web server (periodically repeated in an extra thread)
-checkExtIp.checkIP()
-
-# init of the object representing the state of all controlled devices
-apartment = rasp_to_fhem_comm.init()
 
 
 # function to check the water alarm
@@ -151,38 +145,19 @@ def check_times():
     global gong_check
     
     if not gong_check or time.time() - gong_check >= gong_check_interval:
-        print 'gong'
+        
         if (alarms_all or alarms_urgend_all) and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'off':
             apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
             control.set_dev_state('Fedors_Zimmer', 'Blinken', 'on')
         
     
-        #if not (alarms_all or alarms_urgend_all) and apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'on':
-        #    apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
-        #    control.set_dev_state('Fedors_Zimmer', 'Blinken', 'off')
+        
          
         if alarms_urgend_all and apartment.get_dev_status("Fedors_Zimmer", "Sound") == "off":
             apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'on')
             control.set_dev_state('Fedors_Zimmer', 'Sound', 'on')
-        #if not alarms_urgend_all and apartment.get_dev_status("Fedors_Zimmer", "Sound") == "on":
-        #    apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'off')
-        #    control.set_dev_state('Fedors_Zimmer', 'Sound', 'off')
+        
         gong_check = time.time()
-    
-    # because gong has a wierd bahavior: status request
-    
-    #cmd_ref_sound = 'Fedors_Zimmer.Sound'
-    #cmd_ref_blink = 'Fedors_Zimmer.Blinken'
-    
-    #if apartment.get_dev_status('Fedors_Zimmer', 'Blinken') == 'on':
-        #urllib2.urlopen(constants.get_statusRequest_url(cmd_ref_blink))
-        #if control.get_dict()['Fedors_Zimmer']['sensors']['Blinken'] == 'off':
-        #    apartment.set_dev_state('Fedors_Zimmer', 'Blinken', 'off') 
-    
-    #if apartment.get_dev_status('Fedors_Zimmer', 'Sound') == 'on':
-    #    urllib2.urlopen(constants.get_statusRequest_url(cmd_ref_sound))
-        #if control.get_dict()['Fedors_Zimmer']['sensors']['Sound'] == 'off':
-        #    apartment.set_dev_state('Fedors_Zimmer', 'Sound', 'off') 
     
     
         
@@ -275,6 +250,17 @@ def listen_to_events():
     thread_timer.setDaemon(True)
     thread_timer.start()    
 
+
+
+#####################################################################################################
+##############################  START OF THE PYSERVER  ##############################################
+#####################################################################################################
+
+# get your own external IP and report it to the web server (periodically repeated in an extra thread)
+checkExtIp.checkIP()
+
+# init of the object representing the state of all controlled devices
+apartment = rasp_to_fhem_comm.init()
 
 
 # start the thread listening for the fhem events
